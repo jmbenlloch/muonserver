@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 )
 
@@ -21,6 +22,15 @@ func decodeFrame(recvChannel chan Frame, sendChannel chan *Frame) {
 		case FEB_WR_FIL:
 			log.Println("fil config received")
 			fil_config_ack(frame, sendChannel)
+		case FEB_GEN_INIT:
+			log.Println("run control received")
+			run_control(frame, sendChannel)
+		case FEB_GET_RATE:
+			log.Println("get rate received")
+			get_rate(frame, sendChannel)
+		case FEB_RD_CDR:
+			log.Println("data read received")
+			read_data(frame, sendChannel)
 		case FEB_OK:
 			log.Println("feb ok")
 		case FEB_DATA_CDR:
@@ -65,5 +75,40 @@ func fil_config_ack(frame Frame, sendChannel chan *Frame) {
 	payload := make([]byte, 2+6)           // register + mac address
 	copy(payload[0:2], []byte{0x00, 0x00}) // register
 	newFrame, _ := buildFrame(frame.Destination, frame.Source, FEB_OK_FIL, payload)
+	sendChannel <- newFrame
+}
+
+func run_control(frame Frame, sendChannel chan *Frame) {
+	fmt.Println(frame)
+	//log.Printf("[%s] %x", frame.Source.String(), frame.Payload)
+
+	switch frame.Payload[0] {
+	case 0:
+		fmt.Println("stop run")
+	case 1:
+		fmt.Println("reset run")
+	case 2:
+		fmt.Println("start run")
+	}
+
+	payload := make([]byte, 2+6)           // register + mac address
+	copy(payload[0:2], []byte{0x00, 0x00}) // register
+	newFrame, _ := buildFrame(frame.Destination, frame.Source, FEB_OK, payload)
+	sendChannel <- newFrame
+}
+
+func get_rate(frame Frame, sendChannel chan *Frame) {
+	payload := make([]byte, 2+6)           // register + mac address
+	copy(payload[0:2], []byte{0x00, 0x00}) // register
+	copy(payload[2:], "FEB_rev3_FLX7.003")
+	newFrame, _ := buildFrame(frame.Destination, frame.Source, FEB_OK, payload)
+	sendChannel <- newFrame
+}
+
+func read_data(frame Frame, sendChannel chan *Frame) {
+	payload := make([]byte, 2+6)           // register + mac address
+	copy(payload[0:2], []byte{0x00, 0x00}) // register
+	copy(payload[2:], "FEB_rev3_FLX7.003")
+	newFrame, _ := buildFrame(frame.Destination, frame.Source, FEB_OK, payload)
 	sendChannel <- newFrame
 }
